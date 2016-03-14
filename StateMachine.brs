@@ -7,14 +7,13 @@ Function StateMachine()
         this = m ' StateMachine() scope
 
         fsm = {} ' StateMachine instance
-        
+
         config.events["startup"] = {"none": config.initial}
 
         ' private properties
         fsm.p_config = config
 
         ' public properties
-        fsm.previous = invalid
         fsm.current = config.initial
 
         fsm.is = Function(state)
@@ -34,7 +33,7 @@ Function StateMachine()
 
             return false
         End Function
-        
+
         fsm.cannot = Function(event)
             If m.can(event) = true
                 return false
@@ -64,59 +63,91 @@ Function StateMachine()
     ' ===
     ' m    - StateMachine scope
     ' this - instance scope
-    this.beforeEvent = Function(this, name, from, into)
-        func = this["onbefore" + name]
-
-        If Type(func) = "roFunction"
-            func()
-        End If
-    End Function
-    
-    this.leaveState = Function(this, name, from, into)
+    this.leaveState = Function(this, name, from, into, arguments)
         func = this["onleave" + from] 
 
         If Type(func) = "roFunction"
-            func()
+            func(name, from, into, arguments)
         End If
     End Function
 
-    this.enterState = Function(this, name, from, into)
+    this.enterState = Function(this, name, from, into, arguments)
         func = this["onenter" + into]
 
         If Type(func) = "roFunction"
-            func()
+            func(name, from, into, arguments)
         Else
             func = this["on" + into]
             If Type(func) = "roFunction"
-                func()
+                func(name, from, into, arguments)
             End If
         End If
     End Function
 
-    this.changeState = Function(this, name, from, into)
+    this.changeState = Function(this, name, from, into, arguments)
         func = this["onchangestate"]
 
         If Type(func) = "roFunction"
-            func()
+            func(name, from, into, arguments)
         End If
     End Function
 
-    this.afterEvent = Function(this, name, from, into)
+    this.beforeThisEvent = Function(this, name, from, into, arguments)
+        func = this["onbefore" + name]
+
+        If Type(func) = "roFunction"
+            func(name, from, into, arguments)
+        End If
+    End Function
+
+    this.beforeAnyEvent = Function(this, name, from, into, arguments)
+        func = this["onbeforeevent"]
+
+        If Type(func) = "roFunction"
+            func(name, from, into, arguments)
+        End If
+    End Function
+
+    this.afterThisEvent = Function(this, name, from, into, arguments)
         func = this["onafter" + name]
 
         If Type(func) = "roFunction"
-            func()
+            func(name, from, into, arguments)
         Else
             func = this["on" + name]
             If Type(func) = "roFunction"
-                func()
+                func(name, from, into, arguments)
             End If
         End If
+    End Function
+
+    this.afterAnyEvent = Function(this, name, from, into, arguments)
+        func = this["onafterevent"]
+
+        If Type(func) = "roFunction"
+            func(name, from, into, arguments)
+        Else
+            func = this["onevent"]
+            If Type(func) = "roFunction"
+                func(name, from, into, arguments)
+            End If
+        End If
+    End Function
+
+    this.beforeEvent = Function(this, name, from, into, arguments)
+        If StateMachine().beforeThisEvent(this, name, from, into, arguments) = false OR StateMachine().beforeAnyEvent(this, name, from, into, arguments) = false
+            return false
+        End If
+    End Function
+
+    this.afterEvent = Function(this, name, from, into, arguments)
+        StateMachine().afterAnyEvent(this, name, from, into, arguments)
+        StateMachine().afterThisEvent(this, name, from, into, arguments)
     End Function
 
     this.p_buildEvent = Function()
         ' there is no closures in BrightScript, boo-hoo
-        return Function(name)
+        return Function(name, arguments = {})
             this = m
 
             If this.cannot(name) = true
@@ -136,34 +167,33 @@ Function StateMachine()
                 into = this.current ' do not change state
             End If
 
-            If false = StateMachine().beforeEvent(this, name, from, into)
+            If false = StateMachine().beforeEvent(this, name, from, into, arguments)
                 print "something wen't wrong before calling event"
                 return 0
             End If
-            
+
             If from = into
                 ' do not change state
-                StateMachine().afterEvent(this, name, from, into)
+                StateMachine().afterEvent(this, name, from, into, arguments)
                 return 0
             End If
 
             ' do transition, yo
-            this.transition = Function(name, from, into)
+            this.transition = Function(name, from, into, arguments)
                 this = m
                 this.transition = invalid ' transition can be called only once
-                this.previous = this.current
                 this.current = into
-                StateMachine().enterState(this, name, from, into)
-                StateMachine().changeState(this, name, from, into)
-                StateMachine().afterEvent(this, name, from, into)
+                StateMachine().enterState(this, name, from, into, arguments)
+                StateMachine().changeState(this, name, from, into, arguments)
+                StateMachine().afterEvent(this, name, from, into, arguments)
             End Function
-            
-            If false <> StateMachine().leaveState(this, name, from, into)
+
+            If false <> StateMachine().leaveState(this, name, from, into, arguments)
                 If this.transition <> invalid
-                    this.transition(name, from, into)
+                    this.transition(name, from, into, arguments)
                 End If
             End If
-                
+
         End Function
     End Function
 

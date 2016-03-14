@@ -31,9 +31,8 @@ sm = StateMachine().create({
 })
 
 ? sm.current ' "green"
-sm.call("warn")
+sm.call("warn", { "argument": "value" })
 ? sm.current ' "yellow"
-? sm.previous ' "green"
 ? sm.can("panic") ' true
 ? sm.cannot("clear") ' true
 sm.call("calm")
@@ -42,9 +41,8 @@ sm.call("calm")
 
 ## API
 
-* `sm.call(eventName)`
+* `sm.call(eventName, arguments)`
 * `sm.current`
-* `sm.previous`
 * `sm.can(eventName)`
 * `sm.cannot(eventName)`
 * `sm.is(stateName)`
